@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=2.0, minimum-scale=0.5">
+  <title>双队PK · 认识整点时钟</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: linear-gradient(135deg, #2b5a3a 0%, #1e3b28 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', 'Fredoka', 'Comic Sans MS', '幼圆', sans-serif;
+      padding: 20px;
+      margin: 0;
+    }
+    .game-container {
+      max-width: 850px;
+      width: 100%;
+      background: rgba(255, 251, 245, 0.95);
+      backdrop-filter: blur(25px);
+      border-radius: 80px;
+      padding: 25px 25px 35px;
+      box-shadow: 0 35px 50px rgba(0, 0, 0, 0.55), inset 0 4px 20px rgba(255, 255, 200, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 4px solid #e7c288;
+    }
+
+    /* 计分板 */
+    .score-panel {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      background: #f9eec1;
+      border-radius: 100px;
+      padding: 12px 30px;
+      box-shadow: 0 10px 0 #b3945e, inset 0 3px 18px white;
+      font-weight: bold;
+    }
+    .team {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .team-panda .mascot, .team-rabbit .mascot {
+      font-size: 42px;
+      filter: drop-shadow(0 6px 4px rgba(0,0,0,0.3));
+    }
+    .score-badge {
+      background: #2d4b2c;
+      color: #ffd966;
+      font-size: 28px;
+      padding: 8px 22px;
+      border-radius: 40px;
+      min-width: 75px;
+      text-align: center;
+      box-shadow: inset 0 -5px 0 #1a2e1a;
+      letter-spacing: 2px;
+    }
+    .vs-text {
+      font-size: 34px;
+      color: #b76e2e;
+      text-shadow: 2px 2px 0 white;
+      margin: 0 8px;
+      font-weight: 800;
+    }
+
+    /* 双表盘区域 */
+    .clocks-row {
+      display: flex;
+      width: 100%;
+      justify-content: center;
+      gap: 30px;
+      margin: 10px 0 15px;
+      flex-wrap: wrap;
+    }
+    .clock-card {
+      background: #fef7e9;
+      border-radius: 70px;
+      padding: 15px 15px 10px;
+      box-shadow: inset 0 0 18px #cfb991, 0 15px 18px rgba(0,0,0,0.4);
+      border: 4px solid #dbb45c;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .clock-label {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .panda-label { color: #2d4b1c; }
+    .rabbit-label { color: #8b5a2b; }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-width: 200px;
+      background: #fffdf5;
+      border-radius: 50%;
+      box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35), inset 0 0 28px #ffefc8;
+    }
+
+    .question-banner {
+      font-size: 24px;
+      font-weight: 700;
+      color: #3b2b1a;
+      background: #ffedc9;
+      padding: 10px 40px;
+      border-radius: 50px;
+      margin: 8px 0 15px;
+      box-shadow: 0 6px 0 #c9a567;
+      letter-spacing: 2px;
+    }
+
+    /* 双队选项区 */
+    .teams-options {
+      display: flex;
+      width: 100%;
+      gap: 30px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 5px;
+    }
+    .team-zone {
+      flex: 1 1 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #fae7c9;
+      border-radius: 55px;
+      padding: 18px 12px;
+      box-shadow: 0 10px 0 #b38b5a, inset 0 3px 14px white;
+    }
+    .panda-zone {
+      background: #e7f3da;
+    }
+    .rabbit-zone {
+      background: #fbe9dd;
+    }
+    .zone-title {
+      font-weight: bold;
+      font-size: 22px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .options-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+    .time-btn {
+      background: white;
+      border: none;
+      font-size: 26px;
+      font-weight: 700;
+      width: 80px;
+      height: 80px;
+      border-radius: 28px;
+      box-shadow: 0 7px 0 #b7a07e, 0 8px 15px rgba(0,0,0,0.25);
+      cursor: pointer;
+      transition: all 0.08s ease;
+      color: #2e2e1f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #efcf9c;
+      letter-spacing: 1px;
+    }
+    .panda-zone .time-btn {
+      background: #f5ffe0;
+      border-color: #7fa04b;
+    }
+    .rabbit-zone .time-btn {
+      background: #fff3e6;
+      border-color: #d99b6c;
+    }
+    .time-btn:active {
+      transform: translateY(5px);
+      box-shadow: 0 2px 0 #7a6a50, 0 5px 10px rgba(0,0,0,0.2);
+    }
+
+    .reset-btn {
+      margin-top: 30px;
+      background: #ffbc5e;
+      border: none;
+      font-size: 24px;
+      font-weight: bold;
+      color: #45351c;
+      padding: 14px 40px;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 9px 0 #b47d44, 0 6px 18px black;
+      transition: 0.1s linear;
+      background: #febf4a;
+      letter-spacing: 2px;
+    }
+    .reset-btn:active {
+      transform: translateY(5px);
+      box-shadow: 0 4px 0 #7b582e, 0 5px 12px black;
+    }
+
+    .global-feedback {
+      margin-top: 12px;
+      font-weight: bold;
+      font-size: 20px;
+      min-height: 30px;
+      color: #2d5430;
+      text-align: center;
+    }
+
+    /* 特效相关 */
+    @keyframes popEffect {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.25); background: #ffd966; box-shadow: 0 0 35px gold; }
+      100% { transform: scale(1); }
+    }
+    .pop-animation {
+      animation: popEffect 0.4s ease-out;
+    }
+    .confetti-overlay {
+      position: fixed;
+      pointer-events: none;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+<div class="game-container">
+  <!-- 计分板 -->
+  <div class="score-panel">
+    <div class="team team-panda">
+      <span class="mascot">🐼</span>
+      <span class="score-badge" id="pandaScore">0</span>
+    </div>
+    <div class="vs-text">⚡VS⚡</div>
+    <div class="team team-rabbit">
+      <span class="score-badge" id="rabbitScore">0</span>
+      <span class="mascot">🐰</span>
+    </div>
+  </div>
+
+  <!-- 两个表盘并列 -->
+  <div class="clocks-row">
+    <div class="clock-card">
+      <div class="clock-label panda-label"><span>🐼</span> 熊猫队时钟</div>
+      <canvas id="pandaClockCanvas" width="200" height="200"></canvas>
+    </div>
+    <div class="clock-card">
+      <div class="clock-label rabbit-label"><span>🐰</span> 兔子队时钟</div>
+      <canvas id="rabbitClockCanvas" width="200" height="200"></canvas>
+    </div>
+  </div>
+
+  <div class="question-banner" id="questionDisplay">🕐 两个时钟各是几点？</div>
+
+  <!-- 双队选项 -->
+  <div class="teams-options">
+    <!-- 熊猫队选项 -->
+    <div class="team-zone panda-zone">
+      <div class="zone-title">🐼 熊猫队选择</div>
+      <div class="options-grid" id="pandaOptions"></div>
+    </div>
+    <!-- 兔子队选项 -->
+    <div class="team-zone rabbit-zone">
+      <div class="zone-title">🐰 兔子队选择</div>
+      <div class="options-grid" id="rabbitOptions"></div>
+    </div>
+  </div>
+
+  <div class="global-feedback" id="globalFeedback"></div>
+  <button class="reset-btn" id="resetGameBtn">🔄 新的一局</button>
+</div>
+
+<script>
+  (function() {
+    // --- 游戏状态：两个时钟各自的小时 (1-12) ---
+    let pandaHour = 3;   // 熊猫队时钟整点
+    let rabbitHour = 8;  // 兔子队时钟整点
+
+    // 分数
+    let pandaScore = 0;
+    let rabbitScore = 0;
+
+    // 选项池
+    const HOUR_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+    // 每个队伍当前选项数组
+    let pandaOptions = [];
+    let rabbitOptions = [];
+
+    // 锁定状态：每个队伍本题是否已答对
+    let pandaAnswered = false;
+    let rabbitAnswered = false;
+
+    // Canvas元素
+    const pandaCanvas = document.getElementById('pandaClockCanvas');
+    const rabbitCanvas = document.getElementById('rabbitClockCanvas');
+    const pandaCtx = pandaCanvas.getContext('2d');
+    const rabbitCtx = rabbitCanvas.getContext('2d');
+
+    // UI元素
+    const questionDisplay = document.getElementById('questionDisplay');
+    const pandaOptionsDiv = document.getElementById('pandaOptions');
+    const rabbitOptionsDiv = document.getElementById('rabbitOptions');
+    const pandaScoreSpan = document.getElementById('pandaScore');
+    const rabbitScoreSpan = document.getElementById('rabbitScore');
+    const globalFeedback = document.getElementById('globalFeedback');
+    const resetBtn = document.getElementById('resetGameBtn');
+
+    // --- 工具函数 ---
+    function getRandomHour() {
+      return Math.floor(Math.random() * 12) + 1;
+    }
+
+    function generateOptions(correctHour) {
+      let opts = [correctHour];
+      const others = HOUR_OPTIONS.filter(h => h !== correctHour);
+      shuffleArray(others);
+      for (let i = 0; i < 3; i++) {
+        opts.push(others[i]);
+      }
+      shuffleArray(opts);
+      return opts;
+    }
+
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    }
+
+    // 加载全新题目（两个时钟各自随机，且通常不同）
+    function loadNewQuestion() {
+      pandaHour = getRandomHour();
+      rabbitHour = getRandomHour();
+      // 避免完全相同？可以允许相同，但也可以加个小逻辑让其不同，这里保留随机
+      // 为了让游戏更有趣，确保两个时钟不同（可选）
+      while (rabbitHour === pandaHour) {
+        rabbitHour = getRandomHour();
+      }
+      
+      pandaOptions = generateOptions(pandaHour);
+      rabbitOptions = generateOptions(rabbitHour);
+      
+      pandaAnswered = false;
+      rabbitAnswered = false;
+      
+      drawClock(pandaCtx, pandaHour);
+      drawClock(rabbitCtx, rabbitHour);
+      renderAllOptions();
+      updateQuestionText();
+      clearGlobalFeedback();
+    }
+
+    // 绘制时钟通用函数
+    function drawClock(ctx, hour) {
+      const width = ctx.canvas.width;
+      const height = ctx.canvas.height;
+      ctx.clearRect(0, 0, width, height);
+      const centerX = width/2, centerY = height/2;
+      const radius = width * 0.42;
+      
+      // 外圈
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius+6, 0, 2*Math.PI);
+      ctx.fillStyle = "#f3e1c2";
+      ctx.fill();
+      ctx.strokeStyle = "#b28b4b";
+      ctx.lineWidth = 5;
+      ctx.stroke();
+      
+      // 主表盘
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, 2*Math.PI);
+      ctx.fillStyle = "#fffef2";
+      ctx.fill();
+      ctx.strokeStyle = "#dbb45c";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      
+      // 刻度与数字
+      for (let i = 1; i <= 12; i++) {
+        const angle = (i * 30 - 90) * Math.PI / 180;
+        const outerX = centerX + Math.cos(angle) * (radius - 8);
+        const outerY = centerY + Math.sin(angle) * (radius - 8);
+        const innerX = centerX + Math.cos(angle) * (radius - 20);
+        const innerY = centerY + Math.sin(angle) * (radius - 20);
+        ctx.beginPath();
+        ctx.moveTo(outerX, outerY);
+        ctx.lineTo(innerX, innerY);
+        ctx.strokeStyle = "#4a3620";
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        
+        const numX = centerX + Math.cos(angle) * (radius - 32);
+        const numY = centerY + Math.sin(angle) * (radius - 32);
+        ctx.font = "bold 16px 'Segoe UI'";
+        ctx.fillStyle = "#2d2d2d";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(i.toString(), numX, numY);
+      }
+      
+      // 时针
+      const hourAngle = (hour % 12) * 30 - 90;
+      const angleRad = hourAngle * Math.PI/180;
+      const handLen = radius * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX + Math.cos(angleRad)*handLen, centerY + Math.sin(angleRad)*handLen);
+      ctx.strokeStyle = "#2f1d0c";
+      ctx.lineWidth = 7;
+      ctx.lineCap = "round";
+      ctx.stroke();
+      
+      // 分针指向12
+      const minAngle = -90 * Math.PI/180;
+      const minLen = radius * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX + Math.cos(minAngle)*minLen, centerY + Math.sin(minAngle)*minLen);
+      ctx.strokeStyle = "#3d3d3d";
+      ctx.lineWidth = 4.5;
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 7, 0, 2*Math.PI);
+      ctx.fillStyle = "#e5b13b";
+      ctx.fill();
+      ctx.strokeStyle = "#4e3b1f";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+
+    function renderAllOptions() {
+      pandaOptionsDiv.innerHTML = '';
+      rabbitOptionsDiv.innerHTML = '';
+      
+      pandaOptions.forEach(h => {
+        const btn = document.createElement('button');
+        btn.className = 'time-btn';
+        btn.textContent = h + ':00';
+        btn.dataset.hour = h;
+        btn.addEventListener('click', (e) => handleAnswer('panda', h, btn));
+        pandaOptionsDiv.appendChild(btn);
+      });
+      
+      rabbitOptions.forEach(h => {
+        const btn = document.createElement('button');
+        btn.className = 'time-btn';
+        btn.textContent = h + ':00';
+        btn.dataset.hour = h;
+        btn.addEventListener('click', (e) => handleAnswer('rabbit', h, btn));
+        rabbitOptionsDiv.appendChild(btn);
+      });
+    }
+
+    // 处理回答
+    function handleAnswer(team, selectedHour, buttonElement) {
+      if (team === 'panda' && pandaAnswered) {
+        setGlobalFeedback('🐼 熊猫队本题已经答对啦！等待新题目~');
+        return;
+      }
+      if (team === 'rabbit' && rabbitAnswered) {
+        setGlobalFeedback('🐰 兔子队本题已经答对啦！等待新题目~');
+        return;
+      }
+      
+      const correctHour = team === 'panda' ? pandaHour : rabbitHour;
+      const isCorrect = (selectedHour === correctHour);
+      
+      if (isCorrect) {
+        // 锁定队伍
+        if (team === 'panda') {
+          pandaAnswered = true;
+          pandaScore += 1;
+          pandaScoreSpan.textContent = pandaScore;
+          setGlobalFeedback('🎉 熊猫队正确！ +1 分！', 'correct');
+        } else {
+          rabbitAnswered = true;
+          rabbitScore += 1;
+          rabbitScoreSpan.textContent = rabbitScore;
+          setGlobalFeedback('🎉 兔子队正确！ +1 分！', 'correct');
+        }
+        
+        // 按钮特效 + 撒花特效
+        animateCorrectButton(buttonElement, team);
+        spawnConfetti(team);
+        
+        // 检查两队是否都已完成
+        if (pandaAnswered && rabbitAnswered) {
+          setGlobalFeedback('🌟 两队都答对啦！即将刷新题目...', 'info');
+          setTimeout(() => {
+            loadNewQuestion();
+          }, 1200);
+        }
+      } else {
+        setGlobalFeedback(`❌ ${team === 'panda' ? '熊猫队' : '兔子队'}选错了，再试试看！`, 'wrong');
+        if (buttonElement) {
+          buttonElement.style.transform = 'translateX(5px)';
+          setTimeout(() => { if(buttonElement) buttonElement.style.transform = ''; }, 160);
+        }
+      }
+    }
+
+    function animateCorrectButton(btn, team) {
+      if (!btn) return;
+      btn.classList.add('pop-animation');
+      btn.style.backgroundColor = '#ffd966';
+      btn.style.boxShadow = '0 0 28px gold';
+      setTimeout(() => {
+        btn.classList.remove('pop-animation');
+        btn.style.backgroundColor = '';
+        btn.style.boxShadow = '';
+      }, 450);
+    }
+
+    // 简易撒花特效
+    function spawnConfetti(team) {
+      const colors = team === 'panda' ? ['#2d5e2d','#f5e56c','#b0d16b','#ffffff'] : ['#e09d6c','#ffb7c5','#f9e076','#ffdab9'];
+      for (let i=0; i<22; i++) {
+        createConfetti(colors);
+      }
+    }
+
+    function createConfetti(colors) {
+      const confetti = document.createElement('div');
+      confetti.innerText = ['🎉','✨','⭐','🌟'][Math.floor(Math.random()*4)];
+      confetti.style.position = 'fixed';
+      confetti.style.left = Math.random() * 100 + '%';
+      confetti.style.top = '-20px';
+      confetti.style.fontSize = (16 + Math.random() * 28) + 'px';
+      confetti.style.zIndex = '9999';
+      confetti.style.pointerEvents = 'none';
+      confetti.style.animation = `fall ${1.5 + Math.random()*2}s ease-out forwards`;
+      document.body.appendChild(confetti);
+      
+      confetti.addEventListener('animationend', () => {
+        confetti.remove();
+      });
+    }
+
+    // 动态注入关键帧
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = `
+      @keyframes fall {
+        0% { transform: translateY(0) rotate(0deg); opacity:1; }
+        100% { transform: translateY(100vh) rotate(720deg); opacity:0; }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+
+    function updateQuestionText() {
+      questionDisplay.textContent = `🐼 熊猫时钟  vs  🐰 兔子时钟 （整点）`;
+    }
+
+    function setGlobalFeedback(msg, type) {
+      globalFeedback.textContent = msg;
+      if (type === 'correct') globalFeedback.style.color = '#1f5a1f';
+      else if (type === 'wrong') globalFeedback.style.color = '#b13b3b';
+      else globalFeedback.style.color = '#2d5430';
+    }
+
+    function clearGlobalFeedback() {
+      globalFeedback.textContent = '';
+    }
+
+    function resetGame() {
+      pandaScore = 0;
+      rabbitScore = 0;
+      pandaScoreSpan.textContent = '0';
+      rabbitScoreSpan.textContent = '0';
+      loadNewQuestion();
+      setGlobalFeedback('新游戏！熊猫队 VS 兔子队 🐼🐰', 'info');
+    }
+
+    resetBtn.addEventListener('click', resetGame);
+
+    // 初始化
+    function initialGame() {
+      pandaHour = getRandomHour();
+      rabbitHour = getRandomHour();
+      while (rabbitHour === pandaHour) rabbitHour = getRandomHour();
+      pandaOptions = generateOptions(pandaHour);
+      rabbitOptions = generateOptions(rabbitHour);
+      pandaAnswered = false;
+      rabbitAnswered = false;
+      pandaScore = 0;
+      rabbitScore = 0;
+      pandaScoreSpan.textContent = '0';
+      rabbitScoreSpan.textContent = '0';
+      drawClock(pandaCtx, pandaHour);
+      drawClock(rabbitCtx, rabbitHour);
+      renderAllOptions();
+      updateQuestionText();
+      clearGlobalFeedback();
+    }
+
+    initialGame();
+  })();
+</script>
+</body>
+</html>
